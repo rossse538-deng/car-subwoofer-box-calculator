@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>车载超低音单元箱体计算分析系统</title>
+<style>
+  :root{
+    --bg:#14161a; --panel:#1c1f24; --panel2:#23262c; --line:#33373f;
+    --text:#dfe2e6; --text-dim:#8b929c;
+    --amber:#e8a33d; --teal:#4fd1c5; --violet:#b98cf0; --green:#6bbf7b;
+    --red:#e2584f; --yellow:#d9b23c;
+    --mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Microsoft YaHei',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:linear-gradient(180deg, rgba(232,163,61,0.04), transparent 300px), var(--bg);
+    color:var(--text); font-family:var(--sans); line-height:1.5; padding:28px 18px 60px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+
+  header{margin-bottom:22px;border-bottom:1px solid var(--line);padding-bottom:18px;text-align:center;}
+  header .kicker{font-family:var(--mono);font-size:12px;color:var(--amber);letter-spacing:.04em;}
+  header h1{font-size:24px;margin:6px 0 6px;font-weight:600;letter-spacing:.02em;}
+  header p{color:var(--text-dim);font-size:13.5px;margin:0 auto;max-width:720px;}
+
+  .grid{display:grid;grid-template-columns:340px 1fr;gap:18px;}
+  @media (max-width:920px){.grid{grid-template-columns:1fr;}}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 18px 20px;}
+  .panel + .panel{margin-top:18px;}
+  .panel h2{font-size:13px;color:var(--text);margin:0 0 14px;font-weight:600;display:flex;align-items:center;gap:8px;}
+  .panel h2 .dot{width:6px;height:6px;border-radius:50%;background:var(--amber);flex:0 0 auto;}
+  .panel h2 .dot.teal{background:var(--teal);}
+  .panel h2 .dot.violet{background:var(--violet);}
+
+  .seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:3px;margin-bottom:16px;}
+  .seg button{
+    flex:1;background:none;border:none;color:var(--text-dim);padding:9px 4px;border-radius:6px;
+    font-size:13.5px;cursor:pointer;font-family:var(--sans);transition:background .12s;
+  }
+  .seg button.active[data-type=vented]{background:var(--amber);color:#20140a;font-weight:600;}
+  .seg button.active[data-type=sealed]{background:var(--teal);color:#0a1f1d;font-weight:600;}
+
+  .field{margin-bottom:12px;}
+  .field label{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--text-dim);margin-bottom:5px;}
+  .field label b{color:var(--text);font-weight:500;}
+  .field label .val{font-family:var(--mono);color:var(--teal);font-size:12.5px;}
+  .field input[type=range]{width:100%;accent-color:var(--amber);height:4px;}
+  .field input[type=number]{
+    width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);
+    padding:7px 9px;border-radius:6px;font-family:var(--mono);font-size:13px;
+  }
+  .field input[type=number]:focus{outline:none;border-color:var(--amber);}
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .portdims{display:flex;gap:10px;}
+  .portdims .field{flex:1;min-width:0;}
+  .divider{height:1px;background:var(--line);margin:16px 0;}
+
+  .statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px 12px 10px;}
+  .stat .k{font-size:11px;color:var(--text-dim);margin-bottom:6px;line-height:1.3;}
+  .stat .v{font-family:var(--mono);font-size:19px;color:var(--text);}
+  .stat .v small{font-size:12px;color:var(--text-dim);font-weight:400;}
+  .stat.amber .v{color:var(--amber);}
+  .stat.teal .v{color:var(--teal);}
+  .stat.violet .v{color:var(--violet);}
+
+  canvas{width:100%;display:block;background:var(--panel2);border-radius:8px;border:1px solid var(--line);}
+  .legendline{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--text-dim);margin-top:10px;}
+  .legendline span{display:flex;align-items:center;gap:6px;}
+  .legendline i{display:inline-block;width:14px;height:0;border-top-width:2px;border-top-style:solid;}
+
+  table.cmp{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;}
+  table.cmp th{text-align:left;color:var(--text-dim);font-weight:500;font-size:11.5px;padding:6px 10px;border-bottom:1px solid var(--line);}
+  table.cmp td{padding:9px 10px;border-bottom:1px solid var(--line);font-family:var(--mono);}
+  table.cmp td.lbl{font-family:var(--sans);color:var(--text-dim);}
+  table.cmp tr:last-child td{border-bottom:none;}
+
+  .tag{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10.5px;font-family:var(--sans);white-space:nowrap;}
+  .tag.ok{background:rgba(107,191,123,.15);color:var(--green);}
+  .tag.warn{background:rgba(217,178,60,.15);color:var(--yellow);}
+  .tag.bad{background:rgba(226,88,79,.15);color:var(--red);}
+  .tag.info{background:rgba(79,209,197,.14);color:var(--teal);}
+
+  .note{
+    font-size:12.5px;color:var(--text-dim);background:var(--panel2);
+    border:1px solid var(--line);border-left:2px solid var(--amber);
+    padding:10px 12px;border-radius:0 7px 7px 0;margin-top:10px;line-height:1.65;
+  }
+  .note b{color:var(--text);}
+  .note.teal{border-left-color:var(--teal);}
+  .note.violet{border-left-color:var(--violet);}
+  .note.green{border-left-color:var(--green);}
+  .note h3{margin:0 0 6px;font-size:12.5px;color:var(--text);font-weight:600;}
+
+  select{
+    width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);
+    padding:7px 9px;border-radius:6px;font-family:var(--sans);font-size:13px;
+  }
+  select:focus{outline:none;border-color:var(--amber);}
+  .btn{
+    background:var(--amber);border:none;color:#20140a;font-weight:600;
+    padding:9px 18px;border-radius:7px;font-size:13px;cursor:pointer;font-family:var(--sans);
+  }
+  .btn:hover{filter:brightness(1.08);}
+  .btn:active{transform:translateY(1px);}
+  footer{margin-top:26px;color:var(--text-dim);font-size:11.5px;text-align:center;line-height:1.7;}
+  footer .dev{color:var(--amber);margin-top:8px;font-size:12.5px;}
+</style>
+<base target="_blank">
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">CAR SUBWOOFER ENCLOSURE ALIGNMENT TOOL</div>
+    <h1>车载超低音单元箱体计算分析系统</h1>
+    <p>输入驱动单元的 T/S 参数，实时仿真倒相箱 / 密封箱的低频响应与 −3dB 截止频率，计算倒相孔尺寸，可叠加不同车型的车厢增益，支持音质 / 均衡 / SPL 三种调谐取向。</p>
+  </header>
+
+  <div class="grid">
+    <!-- ============ 左侧输入 ============ -->
+    <div>
+      <div class="panel">
+        <h2><span class="dot"></span>驱动单元 T/S 参数</h2>
+        <div class="twocol">
+          <div class="field"><label><b>Fs (Hz)</b></label><input type="number" id="fs" step="0.1" value="35"></div>
+          <div class="field"><label><b>Qts</b></label><input type="number" id="qts" step="0.01" value="0.40"></div>
+          <div class="field"><label><b>Vas (L)</b></label><input type="number" id="vas" step="0.1" value="40"></div>
+          <div class="field"><label><b>Xmax p2p (mm)</b></label><input type="number" id="xmax" step="1" value="20"></div>
+          <div class="field"><label><b>低音炮标称尺寸</b></label>
+            <select id="sizeSel">
+              <option value="5">5 寸（Sd≈88 cm²）</option>
+              <option value="6">6 寸（Sd≈105 cm²）</option>
+              <option value="7">7 寸（Sd≈165 cm²）</option>
+              <option value="8">8 寸（Sd≈227 cm²）</option>
+              <option value="10" selected>10 寸（Sd≈346 cm²）</option>
+              <option value="11">11 寸（Sd≈415 cm²）</option>
+              <option value="12">12 寸（Sd≈507 cm²）</option>
+              <option value="13">13 寸（Sd≈585 cm²）</option>
+              <option value="15">15 寸（Sd≈830 cm²）</option>
+              <option value="custom">自定义振膜面积…</option>
+            </select></div>
+        </div>
+        <div class="field" id="sdWrap" style="display:none;"><label><b>Sd (cm²)</b></label>
+          <input type="number" id="sd" step="1" value="346"></div>
+        <div class="note" style="margin-top:2px;">
+          各尺寸对应的 Sd 是行业典型值（按有效振膜直径估算），不同品牌同尺寸单元会有 ±10% 左右的出入——在本工具中 <b>Sd 只影响倒相孔气流速度估算，不影响频响曲线与 F3</b>，规格表上有准确值时可选手动输入。
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2><span class="dot"></span>箱体设计</h2>
+
+        <div class="field">
+          <label><b>单箱净容积 Vb</b><span class="val" id="v_vb"></span></label>
+          <input type="range" id="vb" min="15" max="300" step="1" value="55">
+        </div>
+
+        <div id="fbArea">
+          <div class="field">
+            <label><b>调谐取向</b></label>
+            <select id="tuneStyle">
+              <option value="flat" selected>音质 / 平直（下潜最深，峰≈0dB）</option>
+              <option value="daily">均衡 / 日常（峰≤3dB，兼顾量感）</option>
+              <option value="spl">SPL / 量感（峰≤9dB，竞赛取向）</option>
+            </select>
+          </div>
+          <div class="field">
+            <label><b>调谐频率 Fb</b><span class="val" id="v_fb"></span></label>
+            <input type="range" id="fb" min="15" max="60" step="0.1" value="27">
+          </div>
+          <div class="note teal" id="fbRec" style="margin-top:-2px;">推荐 Fb：—</div>
+          <div class="divider"></div>
+        </div>
+
+        <div class="field">
+          <label><b>车型 / 车厢增益</b></label>
+          <select id="cabinSel">
+            <option value="none">不叠加（自由场 / 尾箱打开展示）</option>
+            <option value="hatch" selected>两厢轿车 · 小型 SUV（连通小座舱）</option>
+            <option value="mpv">MPV · 中大型 SUV（连通大座舱）</option>
+            <option value="sedan">三厢轿车（后备箱与座舱隔断）</option>
+          </select>
+        </div>
+        <div class="note green" id="cabinNote"></div>
+
+        <div id="portArea">
+          <div class="divider"></div>
+          <div class="field">
+            <label><b>倒相孔形式</b></label>
+            <select id="portShape">
+              <option value="slot">矩形槽式孔（高 × 宽）</option>
+              <option value="round">单圆孔</option>
+              <option value="round2">双圆孔</option>
+            </select>
+          </div>
+          <div class="portdims">
+            <div class="field" id="portHField"><label><b>孔高 H (mm)</b></label><input type="number" id="portH" value="40" step="1"></div>
+            <div class="field"><label><b id="portWLabel">孔宽 W (mm)</b></label><input type="number" id="portW" value="250" step="1"></div>
+          </div>
+          <div class="note" id="portLenOut">倒相孔长度计算中…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 右侧结果 ============ -->
+    <div>
+      <div class="panel">
+        <div class="seg" id="typeSeg">
+          <button class="active" data-type="vented">倒相箱 Vented</button>
+          <button data-type="sealed">密封箱 Sealed</button>
+        </div>
+
+        <div class="statgrid">
+          <div class="stat" id="statF3"><div class="k">−3dB 截止频率 F3</div><div class="v" id="out_f3">–</div></div>
+          <div class="stat"><div class="k" id="out_k2">调谐频率 Fb</div><div class="v" id="out_v2">–</div></div>
+          <div class="stat"><div class="k" id="out_k3">响应峰值（相对高频）</div><div class="v" id="out_v3">–</div></div>
+        </div>
+
+        <canvas id="chart" height="300"></canvas>
+        <div class="legendline" id="legend"></div>
+        <div style="margin-top:12px;text-align:right;">
+          <button class="btn" id="exportBtn">📷 生成结果图片（PNG）</button>
+        </div>
+
+        <div class="note">
+          <b>关于这条曲线</b>：它只模拟"箱体对单元低频响应的塑形作用"，是忽略箱体泄漏与吸声损耗的理想 Thiele-Small 模型。数学上曲线在高频端会收敛到 <b>0dB 水平线</b>（图上加粗标出，任何增益设置下都会显示），本身不含任何高频滚降——倒相箱在 Fb 以下按约 24dB/oct（四阶）滚降，密封箱按约 12dB/oct（二阶）滚降。实际木箱因泄漏与吸声阻尼（典型 Ql≈5–10），共振峰会比理想曲线低 2–5dB、更平滑。
+        </div>
+
+        <div class="note teal" id="sealedNote">
+          <h3>密封箱曲线解读</h3>
+          密封箱是<b>二阶高通系统</b>：它没有倒相箱那种干脆的截止，而是从远低于 Fc 的地方就开始<b>缓慢地、渐进地</b>向低频滑落。所以图上密封箱曲线在 100Hz 附近看起来"已经在往下掉"，这不是计算错误，也不代表它"100Hz 就截止了"——它只是斜率缓、开始得早，真正的 −3dB 点（F3）通常仍落在 30–50Hz 区间。两个细节：
+          <br>· 当 <b>Qtc &gt; 0.707</b> 时，曲线会先在 Fc 附近鼓起一个小峰，再回落到 0dB 渐近线——峰右侧那段"下斜"是回到平坦，不是衰减；
+          <br>· 当 <b>Qtc &lt; 0.707</b> 时没有峰，整个中低频会相对高频略低 1–2dB，听感偏"清淡"但瞬态更快。
+          <br><br>关键在于：<b>车厢增益（约 40–80Hz 以下、12dB/oct 左右）恰好与密封箱的缓降斜率互补</b>，装车后两者叠加，实际听到的低频往往比图上这条自由场曲线平直得多——这就是高端车载低音大量采用密封箱的原因。选择左侧车型即可在图上看到叠加增益后的效果。
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2><span class="dot violet"></span>该单元理论最佳箱体</h2>
+        <div class="statgrid" id="bestGridV"></div>
+        <div class="statgrid" id="bestGridS"></div>
+        <div class="note violet" id="bestNote">计算中…</div>
+      </div>
+
+      <div class="panel">
+        <h2><span class="dot"></span>倒相箱 vs 密封箱 · 各自设定容积下的对比</h2>
+        <div class="note" style="margin-top:0;">
+          两种箱体的"合理容积"区间天生不同（密封箱通常只有倒相箱的一半左右），同容积对比必然导致其中一方偏离其适配区间。所以下表按<b>你分别为两种箱体设定的容积</b>对比（切换箱体时容积滑块会记住各自的设定）——这更接近真实的设计取舍："实际可实现的倒相方案"对"实际可实现的密封方案"。
+        </div>
+        <table class="cmp">
+          <thead><tr><th>指标</th><th>倒相箱（<span id="thVbv"></span>）</th><th>密封箱（<span id="thVbs"></span>）</th></tr></thead>
+          <tbody id="cmpBody"></tbody>
+        </table>
+        <div class="note">
+          <b>倒相箱（四阶，24dB/oct）</b>：倒相孔在 Fb 附近抑制纸盆位移并将背面声波反相利用，同容积下 F3 通常比密封箱低 40–60%，效率高、低频量感足；代价是瞬态响应稍慢、Fb 以下单元失去声学负载、位移急剧增大（建议加高通滤波保护）、大动态时孔口可能产生气流噪声，且所需箱体更大。
+        </div>
+        <div class="note teal">
+          <b>密封箱（二阶，12dB/oct）</b>：滚降平缓、瞬态干净、收放快，箱内空气弹簧始终约束纸盆位移，大动态下不易超出机械行程，结构简单、对密封性以外的加工工艺宽容，箱体可以做得很小；代价是效率低、同容积下潜浅——但如上文所述，车厢增益会大幅弥补这一短板。
+        </div>
+      </div>
+
+      <div class="panel" id="volNote"></div>
+    </div>
+  </div>
+
+  <footer>
+    倒相箱模型：四阶 Thiele-Small 无损对齐；密封箱模型：二阶高通 Qtc 对齐；倒相孔长度：Lv(cm) = 23562.5·Dv²·N / (Fb²·Vb) − 0.732·Dv，Dv 为单孔等效圆直径(cm)；车厢增益：压力腔经验模型 raw=10·log10(1+(fc/f)⁴)，G=cap·(1−e^(−raw/cap)) 平滑封顶。<br>
+    以上均为工程估算，实际效果受箱体做工、驻波、吸声材料、车内声学环境影响，仅供设计参考。
+    <div class="dev">开发者：乐无间汽车音响 / 邓琰</div>
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ================= 工具函数 ================= */
+const $ = id => document.getElementById(id);
+function num(id, dflt){ const v = parseFloat($(id).value); return isFinite(v) ? v : (dflt === undefined ? 0 : dflt); }
+function fmt(x, d){ return (isFinite(x) ? x : 0).toFixed(d === undefined ? 1 : d); }
+function signed(x, d){ return (x >= 0 ? '+' : '') + x.toFixed(d === undefined ? 1 : d); }
+
+/* 归一化频率采样网格（对数均匀，相对 Fs 或 Fc） */
+const OMEGA_GRID = (() => {
+  const g = [], N = 720, lo = Math.log(0.05), hi = Math.log(16);
+  for (let i = 0; i < N; i++) g.push(Math.exp(lo + (hi - lo) * i / (N - 1)));
+  return g;
+})();
+
+/* ================= 声学模型 ================= */
+/* 倒相箱四阶无损传递函数：|H| = ω⁴ / |D(jω)| */
+function ventedDb(omega, alpha, h, Qts){
+  const w2 = omega * omega;
+  const real = w2 * w2 - w2 * (1 + alpha + h * h) + h * h;
+  const imag = omega * (h - w2) / Qts;
+  const denom = Math.sqrt(real * real + imag * imag) || 1e-12;
+  return 20 * Math.log10(Math.max((w2 * w2) / denom, 1e-12));
+}
+/* 密封箱二阶高通：|H| = ω² / sqrt((1-ω²)² + (ω/Qtc)²) */
+function sealedDb(omega, qtc){
+  const w2 = omega * omega;
+  const den = Math.sqrt(Math.pow(1 - w2, 2) + Math.pow(omega / qtc, 2)) || 1e-12;
+  return 20 * Math.log10(Math.max(w2 / den, 1e-12));
+}
+/* 从高频往低频扫，线性插值求第一个跌破 -3dB 的频率 */
+function findF3(freqs, dbs){
+  for (let i = freqs.length - 1; i > 0; i--){
+    if (dbs[i] >= -3 && dbs[i - 1] < -3){
+      const t = (-3 - dbs[i - 1]) / (dbs[i] - dbs[i - 1]);
+      return freqs[i - 1] + t * (freqs[i] - freqs[i - 1]);
+    }
+  }
+  return freqs[0];  /* 整个扫频范围内都没跌破 -3dB */
+}
+/* 数组曲线上某频率的电平（log-f 插值，freqs 升序） */
+function levelAtArr(freqs, db, f){
+  const n = freqs.length;
+  if (f <= freqs[0]) return db[0];
+  if (f >= freqs[n - 1]) return db[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1){ const mid = (lo + hi) >> 1; if (freqs[mid] < f) lo = mid; else hi = mid; }
+  const t = (Math.log(f) - Math.log(freqs[lo])) / (Math.log(freqs[hi]) - Math.log(freqs[lo]));
+  return db[lo] + t * (db[hi] - db[lo]);
+}
+function levelAt(curve, f){ return levelAtArr(curve.freqs, curve.db, f); }
+
+function ventedCurveAt(fs, qts, alpha, h){
+  const n = OMEGA_GRID.length, freqs = new Array(n), db = new Array(n);
+  for (let i = 0; i < n; i++){ const o = OMEGA_GRID[i]; freqs[i] = o * fs; db[i] = ventedDb(o, alpha, h, qts); }
+  let ref = -Infinity;
+  for (let i = 0; i < n; i++) if (OMEGA_GRID[i] > 3 && db[i] > ref) ref = db[i];
+  if (!isFinite(ref)) ref = 0;
+  let peak = -Infinity;
+  for (let i = 0; i < n; i++){ db[i] -= ref; if (db[i] > peak) peak = db[i]; }
+  return { freqs, db, f3: findF3(freqs, db), peak };
+}
+function sealedCurveAt(fs, qts, vas, vb){
+  const alpha = vas / vb;
+  const qtc = qts * Math.sqrt(1 + alpha);
+  const fc = fs * Math.sqrt(1 + alpha);
+  const n = OMEGA_GRID.length, freqs = new Array(n), db = new Array(n);
+  for (let i = 0; i < n; i++){ const o = OMEGA_GRID[i]; freqs[i] = o * fc; db[i] = sealedDb(o, qtc); }
+  let peak = -Infinity;
+  for (let i = 0; i < n; i++) if (db[i] > peak) peak = db[i];
+  return { freqs, db, f3: findF3(freqs, db), peak, qtc, fc, alpha };
+}
+
+/* 快速标量版：只求 F3/peak/指定频率电平，用于搜索寻优 */
+const FAST_N = 150;
+const FAST_OMEGA = (() => {
+  const g = new Array(FAST_N), lo = Math.log(0.06), hi = Math.log(14);
+  for (let i = 0; i < FAST_N; i++) g[i] = Math.exp(lo + (hi - lo) * i / (FAST_N - 1));
+  return g;
+})();
+function ventedStats(fs, qts, alpha, h, probeF){
+  const freqs = new Array(FAST_N), dbs = new Array(FAST_N);
+  for (let i = 0; i < FAST_N; i++){ const o = FAST_OMEGA[i]; freqs[i] = o * fs; dbs[i] = ventedDb(o, alpha, h, qts); }
+  let ref = -Infinity;
+  for (let i = 0; i < FAST_N; i++) if (FAST_OMEGA[i] > 3 && dbs[i] > ref) ref = dbs[i];
+  if (!isFinite(ref)) ref = 0;
+  let peak = -Infinity;
+  for (let i = 0; i < FAST_N; i++){ dbs[i] -= ref; if (dbs[i] > peak) peak = dbs[i]; }
+  const out = { f3: findF3(freqs, dbs), peak };
+  if (probeF) out.lvl = levelAtArr(freqs, dbs, probeF);
+  return out;
+}
+
+/* ============ 调谐取向推荐 ============
+   flat : 音质/平直 —— 峰值≤0.5dB 内取下潜最深
+   daily: 均衡/日常 —— 峰值≤3dB 内取 35Hz 输出最大
+   spl  : SPL/量感 —— 峰值≤9dB 内取 45Hz 输出最大（竞赛厂方案的思路） */
+function pickBest(list){
+  let best = null;
+  for (const c of list){
+    if (!best){ best = c; continue; }
+    if (c.f3 < best.f3 - 1e-6) { best = c; continue; }
+    if (c.f3 > best.f3 + 1e-6) continue;
+    if (c.peak < best.peak - 1e-6) { best = c; continue; }
+    if (c.peak > best.peak + 1e-6) continue;
+    if (c.h > best.h) best = c;
+  }
+  return best;
+}
+function flatAlignment(fs, qts, alpha){
+  const coarse = [];
+  for (let h = 0.25; h <= 1.35; h += 0.02){
+    const s = ventedStats(fs, qts, alpha, h);
+    coarse.push({ h, f3: s.f3, peak: s.peak });
+  }
+  let pool = coarse.filter(e => e.peak <= 0.5);
+  if (!pool.length) pool = coarse;
+  const minF3 = Math.min.apply(null, pool.map(e => e.f3));
+  const near = pool.filter(e => e.f3 <= minF3 + 0.25);
+  let seed = near[0].h;
+  for (const e of near) if (e.h > seed) seed = e.h;
+  const fine = [];
+  const lo = Math.max(0.12, seed - 0.03), hi = seed + 0.03;
+  for (let h = lo; h <= hi; h += 0.002){
+    const s = ventedStats(fs, qts, alpha, h);
+    fine.push({ h, f3: s.f3, peak: s.peak });
+  }
+  let pool2 = fine.filter(e => e.peak <= 0.5);
+  if (!pool2.length) pool2 = fine;
+  return pickBest(pool2);
+}
+function styleAlignment(fs, qts, alpha, style){
+  if (style === 'flat') return flatAlignment(fs, qts, alpha);
+  const cap = style === 'daily' ? 3 : 9;
+  const probeF = style === 'daily' ? 35 : 45;
+  let best = null;
+  for (let h = 0.25; h <= 1.6; h += 0.004){
+    const s = ventedStats(fs, qts, alpha, h, probeF);
+    if (s.peak > cap) continue;
+    if (!best || s.lvl > best.lvl) best = { h, f3: s.f3, peak: s.peak, lvl: s.lvl };
+  }
+  if (!best) return flatAlignment(fs, qts, alpha);  /* 极端参数下回退平直解 */
+  return best;
+}
+
+/* 单元理论最佳倒相箱体（随调谐取向变化）：
+   扫 Vb（0.15~8 × Vas，对数），每种取向各自定义"最佳"：
+   flat : 音质/平直 —— F3 进入平台区的拐点：再加大箱体、下潜改善不足 1Hz 的最小容积
+   daily: 均衡/日常 —— 35Hz 输出接近区间最大（差 1dB 内）的最小容积
+   spl  : SPL/量感 —— 45Hz 输出接近区间最大（差 1dB 内）的最小容积 */
+const _boxCache = new Map();
+function getOptimalVentedBox(fs, qts, vas, style){
+  const key = fs.toFixed(4) + '|' + qts.toFixed(4) + '|' + vas.toFixed(4) + '|' + style;
+  if (_boxCache.has(key)) return _boxCache.get(key);
+  const N = 56;
+  const loV = Math.max(5, vas * 0.15), hiV = vas * 8;
+  const results = [];
+  for (let i = 0; i < N; i++){
+    const vb = loV * Math.pow(hiV / loV, i / (N - 1));
+    const b = styleAlignment(fs, qts, vas / vb, style);
+    results.push({ vb, h: b.h, fb: b.h * fs, f3: b.f3, peak: b.peak, lvl: b.lvl });
+  }
+  let res;
+  if (style === 'flat'){
+    const asym = results[N - 1].f3;   /* 最大容积处的渐近 F3 */
+    res = results.find(r => r.f3 <= asym + 1.0) || results[N - 1];
+  } else {
+    const withLvl = results.filter(r => isFinite(r.lvl));   /* 极端参数下取向搜索回退平直解时无 lvl，需剔除 */
+    if (withLvl.length){
+      const maxLvl = Math.max.apply(null, withLvl.map(r => r.lvl));
+      res = withLvl.find(r => r.lvl >= maxLvl - 1.0) || withLvl[withLvl.length - 1];
+    } else {
+      res = results[N - 1];
+    }
+  }
+  _boxCache.set(key, res);
+  if (_boxCache.size > 60) _boxCache.delete(_boxCache.keys().next().value);
+  return res;
+}
+
+/* 倒相孔长度：Lv(cm) = 23562.5·Dv²·N / (Fb²·Vb) − 0.732·Dv
+   （已用 Ground Zero 原厂数据验证：60L/47Hz/10cm 孔 → 105mm，与原厂 105mm 完全一致） */
+function portLength(apTotalCm2, nPorts, fb, vbL){
+  const apPer = apTotalCm2 / nPorts;
+  const dv = Math.sqrt(4 * apPer / Math.PI);
+  const lv = (23562.5 * dv * dv * nPorts) / (fb * fb * vbL) - 0.732 * dv;
+  return { lv, dv };
+}
+
+/* ================= 尺寸 → Sd（行业典型值，cm²） ================= */
+const SIZE_SD = { 5:88, 6:105, 7:165, 8:227, 10:346, 11:415, 12:507, 13:585, 15:830 };
+
+/* ================= 车厢增益模型（全频段平滑，无硬拐点） =================
+   raw(f) = 10·log10(1 + (fc/f)⁴)：过渡带斜率 12dB/oct，fc 处约 +3dB，向高频平滑趋近 0；
+   G(f) = cap · (1 − e^(−raw/cap))：指数饱和替代 min() 硬封顶，低频平滑趋近 cap。 */
+const CABIN = {
+  none:  null,
+  hatch: { fc: 75, cap: 12, desc: '两厢/小 SUV：后备箱与座舱连通且容积小，增益起点高、总量大，20–30Hz 可获得约 +10~12dB 的天然提升。' },
+  mpv:   { fc: 60, cap: 10, desc: 'MPV/中大型 SUV：连通空间大，增益总量可观但起点略低，20–30Hz 约 +8~10dB。' },
+  sedan: { fc: 60, cap: 6,  desc: '三厢轿车：低音炮通常放在与座舱隔断的后备箱内，声波需穿过隔板/座椅，增益被明显削弱，20–30Hz 约 +5~6dB（后排座椅放倒/打通会更多）。' }
+};
+function cabinGainDb(f, type){
+  const c = CABIN[type];
+  if (!c) return 0;
+  const raw = 10 * Math.log10(1 + Math.pow(c.fc / f, 4));
+  return c.cap * (1 - Math.exp(-raw / c.cap));
+}
+function applyGain(curve, type){
+  if (type === 'none') return curve;
+  const db = curve.db.map((d, i) => d + cabinGainDb(curve.freqs[i], type));
+  return { freqs: curve.freqs, db, f3: findF3(curve.freqs, db) };
+}
+function fmtF3(f){ return f < 10 ? '&lt;10' : fmt(f, 1); }
+
+/* ================= 绘图 ================= */
+const FMIN = 10, FMAX = 300;
+function drawChart(series){
+  const canvas = $('chart');
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || 620, h = 300;
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  canvas.style.height = h + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const padL = 46, padR = 14, padT = 14, padB = 28;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+
+  /* Y 轴自适应：包住所有曲线峰值 */
+  let maxSeen = 0;
+  series.forEach(s => {
+    const c = s.curve;
+    for (let i = 0; i < c.freqs.length; i++){
+      const f = c.freqs[i];
+      if (f >= FMIN && f <= FMAX && c.db[i] > maxSeen) maxSeen = c.db[i];
+    }
+  });
+  const dbMax = Math.max(6, Math.ceil((maxSeen + 1) / 3) * 3);
+  const dbMin = dbMax - 42;
+
+  const lf0 = Math.log10(FMIN), lf1 = Math.log10(FMAX);
+  const xPos = f => padL + (Math.log10(f) - lf0) / (lf1 - lf0) * plotW;
+  const yPos = db => padT + (dbMax - db) / (dbMax - dbMin) * plotH;
+
+  /* 垂直网格 */
+  ctx.lineWidth = 1; ctx.font = '10.5px monospace';
+  ctx.textAlign = 'center';
+  [10, 20, 30, 50, 100, 200, 300].forEach(f => {
+    const x = xPos(f);
+    ctx.strokeStyle = '#33373f';
+    ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, padT + plotH); ctx.stroke();
+    ctx.fillStyle = '#8b929c';
+    ctx.fillText(f + 'Hz', Math.min(x, w - 22), h - 8);
+  });
+  ctx.textAlign = 'left';
+  /* 水平网格：从 0dB 向上下双向铺开，保证 0dB 渐近线永远显示 */
+  const dbTicks = [0];
+  for (let d = 6; d <= dbMax; d += 6) dbTicks.push(d);
+  for (let d = -6; d >= dbMin; d -= 6) dbTicks.push(d);
+  dbTicks.forEach(db => {
+    const y = yPos(db);
+    ctx.strokeStyle = db === 0 ? '#4a4f57' : '#33373f';
+    ctx.lineWidth = db === 0 ? 1.4 : 1;
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y); ctx.stroke();
+    ctx.fillStyle = db === 0 ? '#c7cbd1' : '#8b929c';
+    ctx.fillText(db === 0 ? '0dB(平坦渐近线)' : db + 'dB', 4, y + 3);
+  });
+
+  /* 曲线：画布裁剪代替数值钳位，出界部分自然裁掉，不产生假折线 */
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(padL, padT - 6, plotW, plotH + 6);
+  ctx.clip();
+  series.forEach(s => {
+    const c = s.curve;
+    ctx.beginPath();
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = s.width || 2;
+    ctx.setLineDash(s.dash || []);
+    let started = false;
+    for (let i = 0; i < c.freqs.length; i++){
+      const f = c.freqs[i];
+      if (f < FMIN || f > FMAX) continue;
+      const x = xPos(f), y = yPos(c.db[i]);
+      if (!started){ ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+  });
+  ctx.restore();
+}
+</script>
+
+<script>
+"use strict";
+
+/* ================= 状态（两种箱体容积分别记忆，切换联动） ================= */
+const VB_RANGE = {
+  vented: { min: 15, max: 300, dflt: 55 },
+  sealed: { min: 8,  max: 150, dflt: 30 }
+};
+let state = {
+  type: 'vented',
+  vb: { vented: VB_RANGE.vented.dflt, sealed: VB_RANGE.sealed.dflt }
+};
+
+const STYLE_NAME = { flat: '音质/平直', daily: '均衡/日常', spl: 'SPL/量感' };
+let LAST = null;  /* 最近一次计算结果快照，供导出图片使用 */
+
+/* ================= 生成结果图片（PNG，竖版手机友好） ================= */
+function exportPNG(){
+  if (!LAST) return;
+  const L = LAST;
+  const isV = L.type === 'vented';
+  const chartC = $('chart');
+  const W = 860, pad = 30, cw = W - pad * 2;
+  const chartH = Math.round(cw * chartC.height / chartC.width);
+  const scale = 2, TMPH = 3000;
+
+  const c = document.createElement('canvas');
+  c.width = W * scale; c.height = TMPH * scale;
+  const x = c.getContext('2d');
+  x.scale(scale, scale);
+  x.fillStyle = '#14161a'; x.fillRect(0, 0, W, TMPH);
+  x.textBaseline = 'alphabetic';
+  let y = 46;
+
+  /* ---------- 顶部：标题居中置顶，开发者居中于其下 ---------- */
+  x.textAlign = 'center';
+  x.fillStyle = '#dfe2e6'; x.font = 'bold 28px sans-serif';
+  x.fillText('车载超低音单元箱体计算分析系统', W / 2, y); y += 27;
+  x.fillStyle = '#e8a33d'; x.font = 'bold 14.5px sans-serif';
+  x.fillText('开发者：乐无间汽车音响 / 邓琰', W / 2, y); y += 21;
+  x.fillStyle = '#8b929c'; x.font = '12px monospace';
+  x.fillText('CAR SUBWOOFER ENCLOSURE ALIGNMENT TOOL · ' + new Date().toLocaleString('zh-CN'), W / 2, y); y += 24;
+  x.textAlign = 'left';
+
+  function divider(){
+    x.strokeStyle = '#33373f'; x.lineWidth = 1;
+    x.beginPath(); x.moveTo(pad, y); x.lineTo(W - pad, y); x.stroke(); y += 26;
+  }
+  function section(title, dotColor){
+    divider();
+    x.fillStyle = dotColor;
+    x.beginPath(); x.arc(pad + 4, y - 5, 4, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#dfe2e6'; x.font = 'bold 15px sans-serif';
+    x.fillText(title, pad + 16, y); y += 28;
+  }
+  function line(label, text, color, big){
+    x.fillStyle = '#8b929c'; x.font = '13px sans-serif';
+    x.fillText(label, pad, y);
+    x.fillStyle = color || '#dfe2e6'; x.font = (big ? 'bold ' : '') + (big ? '16px' : '14px') + ' monospace';
+    x.fillText(text, pad + 110, y);
+    y += big ? 31 : 27;
+  }
+
+  /* ---------- T/S 参数 ---------- */
+  section('驱动单元 T/S 参数', '#e8a33d');
+  line('Fs / Qts', fmt(L.fs, 1) + ' Hz　/　' + fmt(L.qts, 2));
+  line('Vas / Xmax', fmt(L.vas, 1) + ' L　/　p2p ' + fmt(L.xmax, 0) + ' mm');
+  line('单元尺寸', L.sizeTxt);
+
+  /* ---------- 当前方案与关键指标 ---------- */
+  section('当前方案 · 关键指标', isV ? '#e8a33d' : '#4fd1c5');
+  line('方案', isV ? '倒相箱 ' + fmt(L.vbv, 0) + 'L @ Fb ' + fmt(L.fb, 1) + 'Hz（调谐取向：' + L.styleName + '）'
+                  : '密封箱 ' + fmt(L.vbs, 0) + 'L', isV ? '#e8a33d' : '#4fd1c5', true);
+  line('车厢增益', L.cabinTxt);
+  if (isV){
+    line('自由场 F3', fmt(L.f3vFree, 1) + ' Hz', null, true);
+    line('车内 F3', (L.f3v < 10 ? '<10' : fmt(L.f3v, 1)) + ' Hz（含所选车型增益）', '#6bbf7b', true);
+    line('响应峰值', signed(L.peakV, 2) + ' dB');
+    line('推荐调谐', 'Fb ≈ ' + fmt(L.recFb, 1) + ' Hz（调谐取向：' + L.styleName + '；预期 F3 ' + fmt(L.recF3, 1) + ' Hz、峰值 ' + signed(L.recPeak, 1) + ' dB）', '#4fd1c5');
+    line('理论最佳', fmt(L.obVb, 0) + ' L / Fb ' + fmt(L.obFb, 1) + ' Hz → F3 ' + fmt(L.obF3, 1) + ' Hz（调谐取向：' + L.styleName + '）', '#b98cf0');
+  } else {
+    line('自由场 F3', fmt(L.f3sFree, 1) + ' Hz', null, true);
+    line('车内 F3', (L.f3s < 10 ? '<10' : fmt(L.f3s, 1)) + ' Hz（含所选车型增益）', '#6bbf7b', true);
+    line('Fc / Qtc', fmt(L.fc, 1) + ' Hz　/　' + fmt(L.qtc, 2));
+    line('理论最佳', L.vbSIdeal
+      ? '密封 ' + fmt(L.vbSIdeal, 0) + ' L（Qtc 0.707）→ F3 ' + fmt(L.sIdealF3, 1) + ' Hz'
+      : 'Qts≥0.707，密封箱无法达到平直对齐，建议倒相', '#b98cf0');
+  }
+
+  /* ---------- 倒相孔参数（仅倒相方案） ---------- */
+  if (isV && L.port){
+    section('倒相孔参数', '#e8a33d');
+    line('孔口形式', L.port.dimNote);
+    if (L.port.err){
+      line('计算结果', '⚠ ' + L.port.err, '#e2584f');
+    } else {
+      line('等效直径', fmt(L.port.dv, 1) + ' cm（单孔）');
+      line('所需孔长', '≈ ' + fmt(L.port.lv, 1) + ' cm（' + L.port.lenTag + '）', '#e8a33d', true);
+      line('孔口气流', '峰值 ≈ ' + fmt(L.port.vPeak, 1) + ' m/s（' + L.port.vTag + '）');
+      x.fillStyle = '#8b929c'; x.font = '11.5px sans-serif';
+      x.fillText('注：气流估算假设 Fb 处满摆 Xmax（实际 Fb 处位移最小），结果偏保守；容积为净容积，孔道与单元占用需另加。', pad, y);
+      y += 24;
+    }
+  }
+
+  /* ---------- 频响曲线 + 图例 ---------- */
+  section('频响仿真曲线（' + (isV ? '倒相箱' : '密封箱') + '视角）', '#8b929c');
+  x.fillStyle = '#23262c'; x.fillRect(pad, y - 6, cw, chartH + 12);
+  x.drawImage(chartC, pad, y, cw, chartH);
+  y += chartH + 22;
+  x.font = '12.5px sans-serif';
+  L.legend.forEach(it => {
+    x.strokeStyle = it.color; x.lineWidth = 2.5;
+    x.setLineDash(it.dash || []);
+    x.beginPath(); x.moveTo(pad + 2, y - 4); x.lineTo(pad + 30, y - 4); x.stroke();
+    x.setLineDash([]);
+    x.fillStyle = '#c7cbd1';
+    x.fillText(it.text, pad + 40, y);
+    y += 23;
+  });
+  y += 4;
+
+  /* ---------- 倒相 vs 密封对比 ---------- */
+  section('倒相箱 vs 密封箱（各自设定容积）', '#b98cf0');
+  x.font = '12px monospace';
+  x.fillStyle = '#8b929c';
+  x.fillText('倒相 ' + fmt(L.vbv, 0) + 'L', pad + 210, y);
+  x.fillText('密封 ' + fmt(L.vbs, 0) + 'L', pad + 480, y);
+  y += 24;
+  L.cmpRows.forEach(r => {
+    x.fillStyle = '#8b929c'; x.font = '12.5px sans-serif';
+    x.fillText(r[0], pad, y);
+    x.fillStyle = '#e8a33d'; x.font = '12.5px monospace';
+    x.fillText(String(r[1]).replace(/<[^>]+>/g, '').replace(/&lt;/g, '<'), pad + 210, y);
+    x.fillStyle = '#4fd1c5';
+    x.fillText(String(r[2]).replace(/<[^>]+>/g, '').replace(/&lt;/g, '<'), pad + 480, y);
+    y += 24;
+  });
+  y += 4;
+
+  /* ---------- 页脚 ---------- */
+  divider();
+  x.fillStyle = '#8b929c'; x.font = '11.5px sans-serif';
+  x.fillText('模型：倒相四阶 Thiele-Small 无损对齐 / 密封二阶 Qtc 对齐 / 压力腔车厢增益经验模型。', pad, y); y += 20;
+  x.fillText('实际效果受箱体做工、驻波、吸声材料、车内声学环境影响，工程估算仅供设计参考。', pad, y); y += 22;
+  x.fillStyle = '#e8a33d'; x.font = 'bold 12.5px sans-serif';
+  x.fillText('开发者：乐无间汽车音响 / 邓琰', pad, y); y += 10;
+
+  /* ---------- 裁剪到实际高度并下载 ---------- */
+  const finalH = Math.min(y + 20, TMPH);
+  const out = document.createElement('canvas');
+  out.width = W * scale; out.height = finalH * scale;
+  out.getContext('2d').drawImage(c, 0, 0, W * scale, finalH * scale, 0, 0, W * scale, finalH * scale);
+  const a = document.createElement('a');
+  a.download = '箱体计算结果_' + (isV ? '倒相' : '密封') + '_' + fmt(isV ? L.vbv : L.vbs, 0) + 'L.png';
+  a.href = out.toDataURL('image/png');
+  a.click();
+}
+
+
+function getSd(){
+  const v = $('sizeSel').value;
+  if (v === 'custom') return num('sd', 0);
+  return SIZE_SD[v] || 0;
+}
+function getParams(){
+  return {
+    fs: num('fs'), qts: num('qts'), vas: num('vas'), xmax: num('xmax'),
+    sd: getSd(),
+    fb: num('fb'),
+    cabin: $('cabinSel').value,
+    tuneStyle: $('tuneStyle').value
+  };
+}
+
+/* ================= 主更新 ================= */
+function update(){
+  const p = getParams();
+  const isVented = state.type === 'vented';
+  const vbCur = state.vb[state.type];
+
+  $('v_vb').textContent = fmt(vbCur, 0) + ' L';
+  $('v_fb').textContent = fmt(p.fb, 1) + ' Hz';
+  $('fbArea').style.display = isVented ? '' : 'none';
+  $('portArea').style.display = isVented ? '' : 'none';
+  $('sealedNote').style.display = isVented ? 'none' : '';
+
+  $('cabinNote').innerHTML = p.cabin === 'none'
+    ? '当前显示的是<b>自由场曲线（无车厢增益）</b>——尾箱打开展示、车外试听等场景以此为准（车厢不再形成密闭压力腔，增益基本消失）。关窗正常行车请选择对应车型。'
+    : CABIN[p.cabin].desc + '<br><b>模型说明</b>：车厢增益是压力腔效应的经验近似（约 40–80Hz 以下、12dB/oct 抬升），实际受座椅、内饰吸声、泄漏影响，仅供趋势参考。';
+
+  if (!(p.fs > 0) || !(p.qts > 0) || !(p.vas > 0)) return;
+  const qts = Math.max(p.qts, 0.01);
+
+  /* --- 两种箱体在各自容积下的曲线 --- */
+  const vbv = state.vb.vented, vbs = state.vb.sealed;
+  const alphaV = p.vas / vbv;
+  const curveV = ventedCurveAt(p.fs, qts, alphaV, p.fb / p.fs);
+  const curveS = sealedCurveAt(p.fs, qts, p.vas, vbs);
+
+  /* --- 理想参照 --- */
+  const rec = styleAlignment(p.fs, qts, alphaV, p.tuneStyle);  /* 按当前调谐取向的推荐 */
+  const ob = getOptimalVentedBox(p.fs, qts, p.vas, p.tuneStyle); /* 单元理论最佳（随取向变化） */
+  const optV = ventedCurveAt(p.fs, qts, p.vas / ob.vb, ob.h);
+  let sIdealC = null, vbSIdeal = null;
+  if (p.qts < 0.707){
+    vbSIdeal = p.vas / (Math.pow(0.707 / p.qts, 2) - 1);
+    sIdealC = sealedCurveAt(p.fs, qts, p.vas, vbSIdeal);
+  }
+
+  /* --- 叠加车厢增益（平滑模型，整条曲线无折线） --- */
+  const gainedV = applyGain(curveV, p.cabin);
+  const gainedS = applyGain(curveS, p.cabin);
+
+  /* --- 指标卡（F3 显示叠加增益后的值，更贴近车内） --- */
+  const statF3 = $('statF3');
+  if (isVented){
+    statF3.className = 'stat amber';
+    $('out_f3').innerHTML = fmtF3(gainedV.f3) + ' <small>Hz</small>';
+    $('out_k2').textContent = '调谐频率 Fb';
+    $('out_v2').innerHTML = fmt(p.fb, 1) + ' <small>Hz</small>';
+    $('out_k3').textContent = '响应峰值（相对高频）';
+    $('out_v3').textContent = signed(curveV.peak, 2) + ' dB';
+  } else {
+    statF3.className = 'stat teal';
+    $('out_f3').innerHTML = fmtF3(gainedS.f3) + ' <small>Hz</small>';
+    $('out_k2').textContent = '系统谐振 Fc';
+    $('out_v2').innerHTML = fmt(curveS.fc, 1) + ' <small>Hz</small>';
+    $('out_k3').textContent = '总品质因数 Qtc';
+    $('out_v3').textContent = fmt(curveS.qtc, 2);
+  }
+
+  /* --- Fb 推荐（按当前调谐取向） --- */
+  if (isVented){
+    const recFb = rec.h * p.fs;
+    const dFb = p.fb - recFb;
+    let tag;
+    if (Math.abs(dFb) <= 1.0)      tag = '<span class="tag ok">与推荐值基本一致</span>';
+    else if (Math.abs(dFb) <= 5)   tag = '<span class="tag info">偏离推荐 ' + signed(dFb, 1) + ' Hz</span>';
+    else if (dFb > 0)              tag = '<span class="tag warn">比推荐高 ' + fmt(dFb, 1) + ' Hz——下潜变浅，但单元位移更小、更安全</span>';
+    else                           tag = '<span class="tag warn">比推荐低 ' + fmt(-dFb, 1) + ' Hz——更平更深，但 Fb 以下失载风险增大</span>';
+    const styleWarn = p.tuneStyle === 'spl'
+      ? '<br><span style="color:var(--yellow)">⚠ SPL 取向牺牲 30Hz 以下下潜换取 40–55Hz 声压，务必加高通滤波保护</span>' : '';
+    $('fbRec').innerHTML =
+      '推荐 Fb（调谐取向：' + STYLE_NAME[p.tuneStyle] + '）：<b style="color:var(--teal)">' + fmt(recFb, 1) + ' Hz</b>' +
+      '（当前 ' + fmt(vbv, 0) + 'L 下，预期自由场 F3 = ' + fmt(rec.f3, 1) + ' Hz、峰值 ' + signed(rec.peak, 1) + ' dB）<br>' +
+      tag + styleWarn;
+  }
+
+  /* --- 图表（只画当前箱体类型） --- */
+  const series = [];
+  const legend = [];
+  const legendPlain = [];   /* 结构化图例，供导出图片使用 */
+  const mainColor = isVented ? '#e8a33d' : '#4fd1c5';
+  const mainName = isVented
+    ? '倒相箱 ' + fmt(vbv, 0) + 'L @ Fb ' + fmt(p.fb, 1) + 'Hz'
+    : '密封箱 ' + fmt(vbs, 0) + 'L（Qtc ' + fmt(curveS.qtc, 2) + '）';
+  const mainC = isVented ? curveV : curveS;
+  const mainG = isVented ? gainedV : gainedS;
+
+  if (isVented){
+    const optShow = p.cabin === 'none' ? optV : applyGain(optV, p.cabin);
+    series.push({ curve: optShow, color: '#b98cf0', dash: [2, 3], width: 1.6 });
+    legend.push('<span><i style="border-top-color:#b98cf0;border-top-style:dotted"></i>单元理论最佳（' +
+      fmt(ob.vb, 0) + 'L / Fb ' + fmt(ob.fb, 1) + 'Hz · 调谐取向：' + STYLE_NAME[p.tuneStyle] + '）' + (p.cabin === 'none' ? '' : '，含增益') + '</span>');
+    legendPlain.push({ color: '#b98cf0', dash: [2, 3], text: '单元理论最佳（' + fmt(ob.vb, 0) + 'L / Fb ' + fmt(ob.fb, 1) + 'Hz · 调谐取向：' + STYLE_NAME[p.tuneStyle] + '）' + (p.cabin === 'none' ? '' : '，含增益') });
+  } else if (sIdealC){
+    const sIdealShow = p.cabin === 'none' ? sIdealC : applyGain(sIdealC, p.cabin);
+    series.push({ curve: sIdealShow, color: 'rgba(107,191,123,.7)', dash: [2, 3], width: 1.6 });
+    legend.push('<span><i style="border-top-color:rgba(107,191,123,.9);border-top-style:dotted"></i>密封理想 Qtc=0.707（' +
+      fmt(vbSIdeal, 0) + 'L）' + (p.cabin === 'none' ? '' : '，含增益') + '</span>');
+    legendPlain.push({ color: '#6bbf7b', dash: [2, 3], text: '密封理想 Qtc=0.707（' + fmt(vbSIdeal, 0) + 'L）' + (p.cabin === 'none' ? '' : '，含增益') });
+  }
+
+  if (p.cabin !== 'none'){
+    series.push({ curve: mainC, color: isVented ? 'rgba(232,163,61,.35)' : 'rgba(79,209,197,.35)', dash: [4, 4], width: 1.2 });
+    series.push({ curve: mainG, color: mainColor, dash: [], width: 2.2 });
+    legend.push('<span><i style="border-top-color:' + mainColor + '"></i>' + mainName + '（含车厢增益）</span>');
+    legend.push('<span><i style="border-top-color:' + (isVented ? 'rgba(232,163,61,.5)' : 'rgba(79,209,197,.5)') +
+      ';border-top-style:dashed"></i>同一方案·自由场（无车厢增益）</span>');
+    legendPlain.push({ color: mainColor, dash: [], text: mainName + '（含车厢增益）' });
+    legendPlain.push({ color: isVented ? '#8a6a35' : '#3a7a74', dash: [4, 4], text: '同一方案·自由场（无车厢增益，虚线）' });
+  } else {
+    series.push({ curve: mainC, color: mainColor, dash: [], width: 2.2 });
+    legend.push('<span><i style="border-top-color:' + mainColor + '"></i>' + mainName + '</span>');
+    legendPlain.push({ color: mainColor, dash: [], text: mainName + '（自由场）' });
+  }
+  drawChart(series);
+  $('legend').innerHTML = legend.join('');
+
+  /* --- 理论最佳箱体面板（倒相随取向变化，密封固定 Qtc=0.707） --- */
+  const styleCrit = p.tuneStyle === 'flat' ? 'F3 进入平台区的拐点（再加大箱体下潜改善不足 1Hz）'
+                  : p.tuneStyle === 'daily' ? '35Hz 输出接近最大的最小容积'
+                  : '45Hz 输出接近最大的最小容积';
+  $('bestGridV').innerHTML =
+    '<div class="stat violet"><div class="k">倒相箱 · 推荐净容积（调谐取向：' + STYLE_NAME[p.tuneStyle] + '）</div><div class="v">' + fmt(ob.vb, 0) + ' <small>L</small></div></div>' +
+    '<div class="stat violet"><div class="k">倒相箱 · 推荐调谐 Fb</div><div class="v">' + fmt(ob.fb, 1) + ' <small>Hz</small></div></div>' +
+    '<div class="stat violet"><div class="k">倒相箱 · 理论 F3</div><div class="v">' + fmt(ob.f3, 1) + ' <small>Hz</small></div></div>';
+  if (vbSIdeal){
+    $('bestGridS').innerHTML =
+      '<div class="stat teal"><div class="k">密封箱 · 推荐净容积</div><div class="v">' + fmt(vbSIdeal, 0) + ' <small>L</small></div></div>' +
+      '<div class="stat teal"><div class="k">密封箱 · 目标 Qtc</div><div class="v">0.707</div></div>' +
+      '<div class="stat teal"><div class="k">密封箱 · 理论 F3</div><div class="v">' + fmt(sIdealC.f3, 1) + ' <small>Hz</small></div></div>';
+    $('bestNote').innerHTML =
+      '倒相路线的"理论最佳"随调谐取向变化——当前"' + STYLE_NAME[p.tuneStyle] + '"取向下为 <b>' + fmt(ob.vb, 0) + 'L / Fb ' + fmt(ob.fb, 1) + 'Hz</b>' +
+      '（判定标准：' + styleCrit + '；即倒相图中的紫色点线）。' +
+      '密封路线做到教科书最平直（Qtc=0.707）需要约 <b>' + fmt(vbSIdeal, 0) + 'L</b>（密封图中的绿色点线）。' +
+      '<br><span style="font-size:11.5px">注意：SPL/均衡取向的最佳容积往往反而<b>更小</b>——它们追求的是目标频段（45/35Hz）的声压密度，箱体过大该频段输出反而下降；"大容积 + 低调谐"是另一种常见设计思路，可直接用大容积 + 低 Fb 手动模拟。</span>';
+  } else {
+    const bigC = sealedCurveAt(p.fs, qts, p.vas, p.vas * 20);
+    $('bestGridS').innerHTML =
+      '<div class="stat teal"><div class="k">密封箱 · 推荐净容积</div><div class="v">尽量大</div></div>' +
+      '<div class="stat teal"><div class="k">密封箱 · 可达 Qtc</div><div class="v">≈ ' + fmt(p.qts, 2) + '</div></div>' +
+      '<div class="stat teal"><div class="k">密封箱 · 理论 F3 极限</div><div class="v">' + fmt(bigC.f3, 1) + ' <small>Hz</small></div></div>';
+    $('bestNote').innerHTML =
+      '该单元 <b>Qts = ' + fmt(p.qts, 2) + ' ≥ 0.707</b>，密封箱只会让 Qtc 更高，<b>任何有限容积都达不到经典平直对齐</b>，容积越大越接近 Qts 本身。' +
+      '这类单元本就是为倒相箱设计的——当前"' + STYLE_NAME[p.tuneStyle] + '"取向下其倒相最佳约 <b>' + fmt(ob.vb, 0) + 'L / Fb ' + fmt(ob.fb, 1) + 'Hz</b>（紫色点线）。';
+  }
+
+  /* --- 两种箱体各自容积下的对比表 --- */
+  $('thVbv').textContent = fmt(vbv, 0) + 'L';
+  $('thVbs').textContent = fmt(vbs, 0) + 'L';
+  const rows = [];
+  rows.push(['单箱净容积', fmt(vbv, 0) + ' L', fmt(vbs, 0) + ' L']);
+  rows.push(['自由场 F3', fmt(curveV.f3, 1) + ' Hz', fmt(curveS.f3, 1) + ' Hz']);
+  rows.push(['自由场 30Hz 电平', signed(levelAt(curveV, 30), 1) + ' dB', signed(levelAt(curveS, 30), 1) + ' dB']);
+  if (p.cabin !== 'none'){
+    rows.push(['车内 F3（含车厢增益）', fmtF3(gainedV.f3) + ' Hz', fmtF3(gainedS.f3) + ' Hz']);
+    rows.push(['车内 30Hz 电平', signed(levelAt(gainedV, 30), 1) + ' dB', signed(levelAt(gainedS, 30), 1) + ' dB']);
+  }
+  rows.push(['滚降斜率', '≈ 24dB/oct（四阶，Fb 以下失载）', '≈ 12dB/oct（二阶，全程受控）']);
+  rows.push(['阻尼特性', '峰值 ' + signed(curveV.peak, 2) + ' dB', 'Qtc = ' + fmt(curveS.qtc, 2)]);
+  const f3diff = curveS.f3 - curveV.f3;
+  const vdiff = vbv - vbs;
+  rows.push(['总结',
+    f3diff > 0 ? '自由场下潜深 ' + fmt(f3diff, 1) + ' Hz，低频效率更高' : '此容积下与密封箱下潜接近（容积偏小或 Qts 偏高）',
+    vdiff >= 0 ? '箱体小 ' + fmt(vdiff, 0) + ' L，瞬态快、易制作'
+               : '瞬态快、易制作（当前设定下容积比倒相方案大 ' + fmt(-vdiff, 0) + ' L）']);
+  $('cmpBody').innerHTML = rows.map(r =>
+    '<tr><td class="lbl">' + r[0] + '</td><td style="color:var(--amber)">' + r[1] + '</td><td style="color:var(--teal)">' + r[2] + '</td></tr>'
+  ).join('');
+
+  /* --- 倒相孔计算（仅倒相模式显示） --- */
+  let portInfo = null;   /* 纯文本快照，供导出图片使用 */
+  if (isVented){
+    const shape = $('portShape').value;
+    const hMm = num('portH'), wMm = num('portW');
+    let apTotal = 0, nPorts = 1, dimNote = '';
+    if (shape === 'slot'){
+      apTotal = (hMm / 10) * (wMm / 10);
+      dimNote = '矩形槽孔 ' + hMm + '×' + wMm + ' mm，截面积 ' + fmt(apTotal, 1) + ' cm²';
+    } else if (shape === 'round'){
+      const d = wMm / 10; apTotal = Math.PI * (d / 2) * (d / 2);
+      dimNote = '单圆孔 直径 ' + wMm + ' mm，截面积 ' + fmt(apTotal, 1) + ' cm²';
+    } else {
+      const d = wMm / 10; apTotal = 2 * Math.PI * (d / 2) * (d / 2); nPorts = 2;
+      dimNote = '双圆孔 每孔直径 ' + wMm + ' mm，总截面积 ' + fmt(apTotal, 1) + ' cm²';
+    }
+    if (apTotal > 0){
+      const pl = portLength(apTotal, nPorts, p.fb, vbv);
+      const vPeak = 2 * Math.PI * p.fb * (p.xmax / 2 / 1000) * (p.sd / apTotal);
+      let vTag = '<span class="tag ok">流速正常</span>', vTagPlain = '流速正常';
+      if (vPeak > 25)      { vTag = '<span class="tag bad">流速偏高，建议加大孔径/孔口圆角</span>'; vTagPlain = '流速偏高，建议加大孔径/孔口圆角'; }
+      else if (vPeak > 17) { vTag = '<span class="tag warn">流速偏高，建议孔口做圆角</span>'; vTagPlain = '流速偏高，建议孔口做圆角'; }
+      let lenNote;
+      if (pl.lv < 0){
+        lenNote = '<b style="color:var(--red)">⚠ 计算结果为负值</b>：孔径相对箱体和调谐点过大，请提高调谐频率、减小孔径或增大容积。';
+        portInfo = { dimNote: dimNote, err: '孔径相对箱体与调谐点过大（孔长计算为负值），请提高调谐频率、减小孔径或增大容积' };
+      } else {
+        let lenTag, lenTagPlain;
+        if (pl.lv > 60)      { lenTag = '<span class="tag warn">孔较长，建议做 L 形/U 形折叠孔或加大孔径</span>'; lenTagPlain = '孔较长，建议做 L 形/U 形折叠孔或加大孔径'; }
+        else if (pl.lv < 3)  { lenTag = '<span class="tag warn">孔过短，建议加大孔径或降低调谐频率</span>'; lenTagPlain = '孔过短，建议加大孔径或降低调谐频率'; }
+        else                 { lenTag = '<span class="tag ok">直孔可实现</span>'; lenTagPlain = '直孔可实现'; }
+        lenNote = dimNote + '<br>单孔等效圆直径 ' + fmt(pl.dv, 1) + ' cm　→　<b>所需孔长 ≈ ' + fmt(pl.lv, 1) + ' cm</b> ' + lenTag +
+          '<br>预估孔口峰值气流速度 ≈ ' + fmt(vPeak, 1) + ' m/s ' + vTag +
+          '<br><span style="font-size:11.5px">注：该估算假设"在 Fb 处满摆 Xmax"，实际上 Fb 处纸盆位移恰是最小值，所以结果偏保守（虚高）；竞赛级长冲程单元（Xmax 30mm+）超标属常见，以实测无明显气流噪声为准。</span>';
+        portInfo = { dimNote: dimNote, dv: pl.dv, lv: pl.lv, lenTag: lenTagPlain, vPeak: vPeak, vTag: vTagPlain };
+      }
+      $('portLenOut').innerHTML = lenNote;
+    } else {
+      $('portLenOut').innerHTML = '请输入有效的孔口尺寸。';
+    }
+  }
+
+  /* --- 方案小结 --- */
+  const curName = isVented ? '倒相箱' : '密封箱';
+  const curVol = isVented ? vbv : vbs;
+  const cabinTxt = $('cabinSel').options[$('cabinSel').selectedIndex].text.split('（')[0];
+  let summaryHtml =
+    '当前方案：<b style="color:var(--text)">' + curName + '</b>，单箱净容积 <b style="color:var(--text)">' + fmt(curVol, 0) + 'L</b>（倒相孔/单元本身占用的容积需另加）。';
+  if (isVented){
+    const diffF3 = curveV.f3 - rec.f3;
+    summaryHtml +=
+      '按"' + STYLE_NAME[p.tuneStyle] + '"取向，推荐调谐 <b style="color:var(--teal)">' + fmt(rec.h * p.fs, 1) + 'Hz</b>（自由场 F3 = ' + fmt(rec.f3, 1) + 'Hz）；' +
+      '你目前设的 <b style="color:var(--amber)">' + fmt(p.fb, 1) + 'Hz</b> 相比之下 F3 ' +
+      '<b style="color:' + (Math.abs(diffF3) <= 2 ? 'var(--green)' : 'var(--yellow)') + '">' + (diffF3 >= 0 ? '高' : '低') + ' ' + fmt(Math.abs(diffF3), 1) + 'Hz</b>，' +
+      '响应峰值 ' + signed(curveV.peak, 2) + 'dB。';
+  } else {
+    summaryHtml +=
+      'Qtc = <b style="color:var(--teal)">' + fmt(curveS.qtc, 2) + '</b>（' +
+      (curveS.qtc < 0.65 ? '偏过阻尼，量感保守、瞬态快' :
+       curveS.qtc <= 0.85 ? '处于车载常用区间，力度感强' :
+       curveS.qtc <= 1.1 ? '略欠阻尼，低频有轻微隆起、听感厚' : '明显欠阻尼，中低频易发闷') + '），' +
+      '自由场 F3 = ' + fmt(curveS.f3, 1) + 'Hz。';
+  }
+  summaryHtml += p.cabin !== 'none'
+    ? '<br>叠加<b>' + cabinTxt + '</b>车厢增益后 F3 ≈ ' + fmtF3(isVented ? gainedV.f3 : gainedS.f3) + 'Hz。'
+    : '<br>当前为自由场视图（尾箱打开展示以此为准）；选择车型可查看关窗行车时的车厢增益效果。';
+  $('volNote').innerHTML =
+    '<h2><span class="dot"></span>方案小结</h2>' +
+    '<p style="font-size:13px;color:var(--text-dim);margin:0;line-height:1.65;">' + summaryHtml + '</p>';
+
+  /* --- 缓存当前结果，供"生成结果图片"使用 --- */
+  LAST = {
+    fs: p.fs, qts: p.qts, vas: p.vas, xmax: p.xmax, sd: p.sd,
+    sizeTxt: $('sizeSel').value === 'custom' ? '自定义 Sd = ' + fmt(p.sd, 0) + ' cm²' : $('sizeSel').options[$('sizeSel').selectedIndex].text,
+    type: state.type, vbv: vbv, vbs: vbs, fb: p.fb,
+    styleName: STYLE_NAME[p.tuneStyle],
+    cabinTxt: $('cabinSel').options[$('cabinSel').selectedIndex].text,
+    f3vFree: curveV.f3, f3sFree: curveS.f3, f3v: gainedV.f3, f3s: gainedS.f3,
+    peakV: curveV.peak, qtc: curveS.qtc, fc: curveS.fc,
+    recFb: rec.h * p.fs, recF3: rec.f3, recPeak: rec.peak,
+    obVb: ob.vb, obFb: ob.fb, obF3: ob.f3,
+    vbSIdeal: vbSIdeal, sIdealF3: sIdealC ? sIdealC.f3 : null,
+    port: portInfo, legend: legendPlain, cmpRows: rows
+  };
+}
+
+/* ================= 事件绑定 ================= */
+['fs', 'qts', 'vas', 'xmax', 'portH', 'portW', 'sd'].forEach(id => $(id).addEventListener('input', update));
+$('fb').addEventListener('input', update);
+$('cabinSel').addEventListener('change', update);
+$('tuneStyle').addEventListener('change', update);
+$('exportBtn').addEventListener('click', exportPNG);
+
+/* 容积滑块：写入当前箱体型号的记忆值 */
+$('vb').addEventListener('input', () => {
+  state.vb[state.type] = num('vb', state.vb[state.type]);
+  update();
+});
+
+/* 箱体类型切换：保存旧容积 → 恢复该类别的容积与滑块范围 */
+document.querySelectorAll('#typeSeg button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const t = btn.dataset.type;
+    if (t === state.type) return;
+    state.vb[state.type] = num('vb', state.vb[state.type]);
+    document.querySelectorAll('#typeSeg button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.type = t;
+    const r = VB_RANGE[t];
+    $('vb').min = r.min;
+    $('vb').max = r.max;
+    $('vb').value = state.vb[t];
+    update();
+  });
+});
+
+$('sizeSel').addEventListener('change', () => {
+  $('sdWrap').style.display = $('sizeSel').value === 'custom' ? '' : 'none';
+  update();
+});
+$('portShape').addEventListener('change', () => {
+  const shape = $('portShape').value;
+  if (shape === 'slot'){
+    $('portHField').style.display = '';
+    $('portWLabel').textContent = '孔宽 W (mm)';
+    $('portH').value = 40; $('portW').value = 250;
+  } else {
+    $('portHField').style.display = 'none';
+    $('portWLabel').textContent = shape === 'round' ? '圆孔直径 D (mm)' : '每孔直径 D (mm)';
+    $('portW').value = shape === 'round' ? 100 : 75;   /* 切换形式时给出合理默认孔径，避免沿用槽孔宽度导致孔长为负 */
+  }
+  update();
+});
+let _rt = null;
+window.addEventListener('resize', () => { clearTimeout(_rt); _rt = setTimeout(update, 120); });
+
+/* 初始化 */
+update();
+</script>
+</body>
+</html>
